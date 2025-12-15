@@ -84,13 +84,18 @@
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border);
       color: var(--text);
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
       display: grid;
       place-items: center;
       cursor: pointer;
       transition: border 0.2s ease, transform 0.15s ease;
+    }
+
+    button.icon svg {
+      width: 20px;
+      height: 20px;
     }
 
     button.icon:hover {
@@ -199,18 +204,19 @@
     }
 
     textarea {
-      resize: vertical;
-      min-height: 60px;
-      max-height: 200px;
+      resize: none;
+      min-height: 96px;
+      max-height: 320px;
       width: 100%;
       border-radius: 14px;
       border: 1px solid var(--border);
       background: rgba(255, 255, 255, 0.04);
       color: var(--text);
-      padding: 12px 14px;
+      padding: 14px 16px;
       font-size: 15px;
       outline: none;
       transition: border 0.2s ease, box-shadow 0.2s ease;
+      overflow-y: auto;
     }
 
     textarea:focus {
@@ -219,15 +225,38 @@
     }
 
     button.send {
-      padding: 0 16px;
+      padding: 12px 18px;
       border: 1px solid var(--border);
       background: linear-gradient(135deg, #60a5fa, #a855f7);
       color: white;
       font-weight: 700;
       border-radius: 14px;
       cursor: pointer;
-      min-width: 96px;
+      min-width: 108px;
+      min-height: 48px;
       transition: filter 0.2s ease, transform 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .send .spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    .send.loading .spinner {
+      display: inline-block;
+    }
+
+    .send.loading .label {
+      opacity: 0.9;
     }
 
     button.send:active {
@@ -351,6 +380,30 @@
       flex: 1;
     }
 
+    .dialog .actions {
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .ghost {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: border 0.2s ease, transform 0.1s ease;
+      min-height: 48px;
+    }
+
+    .ghost:hover {
+      border-color: var(--accent);
+    }
+
+    .ghost:active {
+      transform: translateY(1px);
+    }
+
     .badge {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border);
@@ -372,6 +425,12 @@
       form { grid-template-columns: 1fr; }
       button.send { width: 100%; min-height: 48px; }
       .bubble { max-width: 100%; }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
@@ -408,7 +467,10 @@
 
     <form id="composer">
       <textarea id="input" placeholder="メッセージ..." required></textarea>
-      <button type="submit" class="send" id="send">送信</button>
+      <button type="submit" class="send" id="send">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="label">送信</span>
+      </button>
     </form>
   </div>
 
@@ -431,8 +493,9 @@
         <input type="checkbox" id="mockMode" />
         <span>モックモード</span>
       </label>
-      <div class="row">
-        <button class="send" id="saveSettings" type="button">保存</button>
+      <div class="row actions">
+        <button class="ghost" id="closeSettings" type="button"><span class="label">閉じる</span></button>
+        <button class="send" id="saveSettings" type="button"><span class="label">保存</span></button>
       </div>
       <div class="status" id="status" aria-live="polite"></div>
     </div>
@@ -473,6 +536,7 @@
     const mockToggleEl = document.getElementById("mockMode");
     const modelBadgeEl = document.getElementById("modelBadge");
     const aboutModalEl = document.getElementById("aboutModal");
+    const sendBtn = document.getElementById("send");
 
     randomizeBackground();
     let settings = loadSettings();
@@ -480,6 +544,7 @@
     renderHistory();
     updateMockBanner();
     updateModelBadge();
+    adjustInputHeight();
 
     document.getElementById("settings").addEventListener("click", () => {
       openModal();
@@ -519,8 +584,8 @@
       setTimeout(closeModal, 700);
     });
 
-    modalEl.addEventListener("click", (e) => {
-      if (e.target === modalEl) closeModal();
+    document.getElementById("closeSettings").addEventListener("click", () => {
+      closeModal();
     });
 
     aboutModalEl.addEventListener("click", (e) => {
@@ -532,6 +597,7 @@
       const text = inputEl.value.trim();
       if (!text) return;
       inputEl.value = "";
+      adjustInputHeight();
       appendMessage({ role: "user", content: text });
       streamResponse();
     });
@@ -542,6 +608,8 @@
         formEl.requestSubmit();
       }
     });
+
+    inputEl.addEventListener("input", adjustInputHeight);
 
     function loadSettings() {
       try {
@@ -569,6 +637,14 @@
       chatEl.innerHTML = "";
       history.forEach((msg) => renderMessage(msg));
       chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function adjustInputHeight() {
+      const max = parseInt(getComputedStyle(inputEl).maxHeight, 10) || 320;
+      inputEl.style.height = "auto";
+      const nextHeight = Math.min(inputEl.scrollHeight, max);
+      inputEl.style.height = `${nextHeight}px`;
+      inputEl.style.overflowY = inputEl.scrollHeight > max ? "auto" : "hidden";
     }
 
     function setBubbleContent(node, content, isError) {
@@ -612,9 +688,13 @@
       aboutModalEl.classList.remove("open");
     }
 
+    function setLoading(isLoading) {
+      sendBtn.classList.toggle("loading", isLoading);
+    }
+
     async function streamResponse() {
-      const sendBtn = document.getElementById("send");
       sendBtn.disabled = true;
+      setLoading(true);
       const conversation = history.map(({ role, content }) => ({ role, content }));
       const assistantMsg = { role: "assistant", content: "" };
       appendMessage(assistantMsg);
@@ -629,6 +709,7 @@
             clearInterval(timer);
             persistHistory();
             sendBtn.disabled = false;
+            setLoading(false);
           }
         }, 45);
         return;
@@ -693,6 +774,7 @@
       } finally {
         persistHistory();
         sendBtn.disabled = false;
+        setLoading(false);
       }
     }
 

@@ -1,4 +1,12 @@
 services:
+  web:
+    image: nginx:alpine
+    container_name: olla-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
