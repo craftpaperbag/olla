@@ -219,6 +219,11 @@
       overflow-y: auto;
     }
 
+    .settings-textarea {
+      min-height: 120px;
+      max-height: 220px;
+    }
+
     textarea:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.2);
@@ -486,6 +491,10 @@
         <input type="text" id="model" placeholder="llama3" />
       </label>
       <label>
+        システムプロンプト
+        <textarea id="systemPrompt" class="settings-textarea" placeholder="例: あなたは親切なアシスタントです。"></textarea>
+      </label>
+      <label>
         温度
         <input type="number" id="temperature" step="0.1" min="0" max="2" />
       </label>
@@ -521,6 +530,7 @@
     const defaults = {
       endpoint: "http://localhost:11434",
       model: "llama3",
+      systemPrompt: "",
       temperature: 0.7,
       mock: false,
     };
@@ -574,6 +584,7 @@
       settings = {
         endpoint: document.getElementById("endpoint").value.trim() || defaults.endpoint,
         model: document.getElementById("model").value.trim() || defaults.model,
+        systemPrompt: document.getElementById("systemPrompt").value,
         temperature: Number(document.getElementById("temperature").value) || defaults.temperature,
         mock: mockToggleEl.checked,
       };
@@ -674,6 +685,7 @@
     function openModal() {
       document.getElementById("endpoint").value = settings.endpoint;
       document.getElementById("model").value = settings.model;
+      document.getElementById("systemPrompt").value = settings.systemPrompt || "";
       document.getElementById("temperature").value = settings.temperature;
       mockToggleEl.checked = !!settings.mock;
       statusEl.textContent = "";
@@ -695,7 +707,11 @@
     async function streamResponse() {
       sendBtn.disabled = true;
       setLoading(true);
-      const conversation = history.map(({ role, content }) => ({ role, content }));
+      const conversation = [];
+      if (settings.systemPrompt && settings.systemPrompt.trim()) {
+        conversation.push({ role: "system", content: settings.systemPrompt.trim() });
+      }
+      conversation.push(...history.map(({ role, content }) => ({ role, content })));
       const assistantMsg = { role: "assistant", content: "" };
       appendMessage(assistantMsg);
 
